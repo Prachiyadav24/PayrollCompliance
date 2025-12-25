@@ -1,0 +1,30 @@
+{
+  "name": "payrollcompliance",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Prachiyadav24/PayrollCompliance.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Prachiyadav24/PayrollCompliance/issues"
+  },
+  "homepage": "https://github.com/Prachiyadav24/PayrollCompliance#readme",
+  "dependencies": {
+    "csv-parse": "^6.1.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "multer": "^2.0.2",
+    "nodemon": "^3.1.11",
+    "sequelize": "^6.37.7",
+    "sqlite3": "^5.1.7",
+    "xlsx": "^0.18.5"
+  }
+}

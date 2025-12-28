@@ -9,7 +9,7 @@ require('./models/StatutoryDeduction');
 const PORT = process.env.PORT || 3000;
 
 (async () => {
-  await sequelize.sync({ alter: true });
+  await sequelize.sync();
   app.listen(PORT, () => {
     console.log(`Server running on ${PORT}`);
   });

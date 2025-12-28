@@ -7,6 +7,13 @@ const Attendance = sequelize.define('Attendance', {
   year: DataTypes.INTEGER,
   daysPresent: DataTypes.INTEGER,
   overtimeHours: DataTypes.FLOAT
+}, {
+  indexes: [
+    {
+      unique: true,
+      fields: ['EmployeeId', 'month', 'year']
+    }
+  ]
 });
 
 Attendance.belongsTo(Employee);

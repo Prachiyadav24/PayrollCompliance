@@ -9,6 +9,13 @@ const StatutoryDeduction = sequelize.define('StatutoryDeduction', {
   esiEmployer: DataTypes.FLOAT,
   professionalTax: DataTypes.FLOAT,
   tds: DataTypes.FLOAT
+}, {
+  indexes: [
+    {
+      unique: true,
+      fields: ['PayrollEntryId']
+    }
+  ]
 });
 
 StatutoryDeduction.belongsTo(PayrollEntry);

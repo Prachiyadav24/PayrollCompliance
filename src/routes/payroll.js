@@ -81,4 +81,352 @@ router.get('/runs', async (_, res) => {
   res.json(runs);
 });
 
+router.post('/finalize/:id', async (req, res) => {
+  const { id } = req.params;
+
+  const payrollRun = await PayrollRun.findByPk(id);
+
+  if (!payrollRun) {
+    return res.status(404).json({ error: 'Payroll run not found' });
+  }
+
+  if (payrollRun.status === 'FINALIZED') {
+    return res.status(400).json({ error: 'Payroll already finalized' });
+  }
+
+  payrollRun.status = 'FINALIZED';
+  await payrollRun.save();
+
+  res.json({
+    message: 'Payroll finalized',
+    payrollRunId: payrollRun.id
+  });
+});
+
+
+router.post('/calculate/:runId', async (req, res) => {
+  const { runId } = req.params;
+
+  const payrollRun = await PayrollRun.findByPk(runId);
+
+  if (!payrollRun) {
+    return res.status(404).json({ error: 'Payroll run not found' });
+  }
+
+  if (payrollRun.status !== 'DRAFT') {
+    return res.status(400).json({
+      error: 'Cannot calculate payroll for finalized run'
+    });
+  }
+
+  const entries = await PayrollEntry.findAll({
+    where: { PayrollRunId: runId },
+    include: [
+      {
+        model: Employee
+      }
+    ]
+  });
+
+  if (!entries.length) {
+    return res.status(400).json({ error: 'No payroll entries found' });
+  }
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    console.log(entries);
+    for (const entry of entries) {
+      const employee = entry.Employee;
+      console.log('Calculating payroll for employee:', employee.id, employee);
+      const attendance = await Attendance.findOne({
+        where: {
+          EmployeeId: employee.id,
+          month: payrollRun.month,
+          year: payrollRun.year
+        }
+      });
+
+      if (!attendance) continue;
+
+      const basicDaPerDay = Number(employee.basicDaPerDay) || 0;
+      const hra = Number(employee.hraAllowance) || 0;
+      const otRate = Number(employee.otRatePerHour) || 0;
+
+      const payableDays = Number(attendance.payableDays) || 0;
+      const otHours = Number(attendance.overtimeHours) || 0;
+
+      const wages = basicDaPerDay * payableDays;
+      const otPay = otHours * otRate;
+
+      const grossPay = wages + hra + otPay;
+
+      entry.grossPay = grossPay;
+      entry.totalDeductions = 0;
+      entry.netPay = grossPay;
+
+      await entry.save({ transaction });
+    }
+
+    await transaction.commit();
+
+    res.json({
+      message: 'Gross payroll calculated',
+      payrollRunId: runId
+    });
+
+  } catch (err) {
+    await transaction.rollback();
+    res.status(500).json({
+      error: 'Payroll calculation failed',
+      details: err.message
+    });
+  }
+});
+
+const StatutoryDeduction = require('../models/StatutoryDeduction');
+
+router.post('/calculate-pf/:runId', async (req, res) => {
+  const { runId } = req.params;
+
+  const payrollRun = await PayrollRun.findByPk(runId);
+
+  if (!payrollRun) {
+    return res.status(404).json({ error: 'Payroll run not found' });
+  }
+
+  if (payrollRun.status !== 'DRAFT') {
+    return res.status(400).json({
+      error: 'Cannot calculate PF for finalized payroll'
+    });
+  }
+
+  const entries = await PayrollEntry.findAll({
+    where: { PayrollRunId: runId },
+    include: [
+      { model: Employee }
+    ]
+  });
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    for (const entry of entries) {
+      const employee = entry.Employee;
+
+      const basicDaPerDay = Number(employee.basicDaPerDay) || 0;
+
+      const attendance = await Attendance.findOne({
+        where: {
+          EmployeeId: employee.id,
+          month: payrollRun.month,
+          year: payrollRun.year
+        }
+      });
+
+      if (!attendance) continue;
+      const payableDays = Number(attendance.payableDays) || 0;
+      const pfWages = basicDaPerDay * payableDays;
+      
+      console.log(basicDaPerDay, payableDays);
+      const pfEmployee = pfWages * 0.12;
+      const pfEmployer = pfWages * 0.12;
+
+      await StatutoryDeduction.upsert({
+        PayrollEntryId: entry.id,
+        pfEmployee,
+        pfEmployer
+      }, { transaction });
+    }
+
+    await transaction.commit();
+
+    res.json({
+      message: 'PF calculated successfully',
+      payrollRunId: runId
+    });
+
+  } catch (err) {
+    await transaction.rollback();
+    res.status(500).json({
+      error: 'PF calculation failed',
+      details: err.message
+    });
+  }
+});
+
+router.post('/calculate-esi/:runId', async (req, res) => {
+  const { runId } = req.params;
+
+  const payrollRun = await PayrollRun.findByPk(runId);
+
+  if (!payrollRun) {
+    return res.status(404).json({ error: 'Payroll run not found' });
+  }
+
+  if (payrollRun.status !== 'DRAFT') {
+    return res.status(400).json({
+      error: 'Cannot calculate ESI for finalized payroll'
+    });
+  }
+
+  const entries = await PayrollEntry.findAll({
+    where: { PayrollRunId: runId },
+    include: [{ model: Employee }]
+  });
+
+  const ESI_WAGE_LIMIT = 21000;
+  const ESI_EMP_RATE = 0.0075;
+  const ESI_EMPR_RATE = 0.0325;
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    for (const entry of entries) {
+      const grossPay = Number(entry.grossPay) || 0;
+
+      let esiEmployee = 0;
+      let esiEmployer = 0;
+
+      if (grossPay > 0 && grossPay <= ESI_WAGE_LIMIT) {
+        esiEmployee = grossPay * ESI_EMP_RATE;
+        esiEmployer = grossPay * ESI_EMPR_RATE;
+      }
+
+      await StatutoryDeduction.upsert({
+        PayrollEntryId: entry.id,
+        esiEmployee,
+        esiEmployer
+      }, { transaction });
+    }
+
+    await transaction.commit();
+
+    res.json({
+      message: 'ESI calculated successfully',
+      payrollRunId: runId
+    });
+
+  } catch (err) {
+    await transaction.rollback();
+    res.status(500).json({
+      error: 'ESI calculation failed',
+      details: err.message
+    });
+  }
+});
+
+router.post('/calculate-pt/:runId', async (req, res) => {
+  const { runId } = req.params;
+
+  const payrollRun = await PayrollRun.findByPk(runId);
+
+  if (!payrollRun) {
+    return res.status(404).json({ error: 'Payroll run not found' });
+  }
+
+  if (payrollRun.status !== 'DRAFT') {
+    return res.status(400).json({
+      error: 'Cannot calculate PT for finalized payroll'
+    });
+  }
+
+  const entries = await PayrollEntry.findAll({
+    where: { PayrollRunId: runId }
+  });
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    for (const entry of entries) {
+      const grossPay = Number(entry.grossPay) || 0;
+
+      let professionalTax = 0;
+
+      if (grossPay > 10000) {
+        professionalTax = 200;
+      } else if (grossPay > 7500) {
+        professionalTax = 175;
+      }
+
+      await StatutoryDeduction.upsert({
+        PayrollEntryId: entry.id,
+        professionalTax
+      }, { transaction });
+    }
+
+    await transaction.commit();
+
+    res.json({
+      message: 'Professional Tax calculated successfully',
+      payrollRunId: runId
+    });
+
+  } catch (err) {
+    await transaction.rollback();
+    res.status(500).json({
+      error: 'PT calculation failed',
+      details: err.message
+    });
+  }
+});
+
+router.post('/calculate-net/:runId', async (req, res) => {
+  const { runId } = req.params;
+
+  const payrollRun = await PayrollRun.findByPk(runId);
+
+  if (!payrollRun) {
+    return res.status(404).json({ error: 'Payroll run not found' });
+  }
+
+  if (payrollRun.status !== 'DRAFT') {
+    return res.status(400).json({
+      error: 'Cannot calculate net pay for finalized payroll'
+    });
+  }
+
+  const entries = await PayrollEntry.findAll({
+    where: { PayrollRunId: runId },
+    include: [{ model: StatutoryDeduction }]
+  });
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    for (const entry of entries) {
+      const grossPay = Number(entry.grossPay) || 0;
+      const deductions = entry.StatutoryDeduction || {};
+
+      const pf = Number(deductions.pfEmployee) || 0;
+      const esi = Number(deductions.esiEmployee) || 0;
+      const pt = Number(deductions.professionalTax) || 0;
+      const tds = Number(deductions.tds) || 0; // future-proof
+
+      const totalDeductions = pf + esi + pt + tds;
+      const netPay = grossPay - totalDeductions;
+
+      entry.totalDeductions = totalDeductions;
+      entry.netPay = netPay;
+
+      await entry.save({ transaction });
+    }
+
+    await transaction.commit();
+
+    res.json({
+      message: 'Net pay calculated successfully',
+      payrollRunId: runId
+    });
+
+  } catch (err) {
+    await transaction.rollback();
+    res.status(500).json({
+      error: 'Net pay calculation failed',
+      details: err.message
+    });
+  }
+});
+
+
 module.exports = router;

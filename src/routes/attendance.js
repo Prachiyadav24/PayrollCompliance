@@ -4,6 +4,7 @@ const XLSX = require('xlsx');
 const Attendance = require('../models/Attendance');
 const Employee = require('../models/Employee');
 const sequelize = require('../config/database');
+const PayrollRun = require('../models/PayrollRun');
 
 function parseSheetDirectly(sheet, headerRowIndex = 7) {
   const range = XLSX.utils.decode_range(sheet['!ref']);
@@ -66,6 +67,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   const errors = [];
   const validRows = [];
 
+  
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
 
@@ -76,14 +78,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       }
     }
     console.log('Validating row for Emp ID:', row['Emp ID.']);
-    console.log(
-  row['Emp ID.'],
-  row['MONTH'],
-  row['YEAR'],
-  row['Present Days'],
-  row['Payable Days'],
-  row['OT Hrs']
-);
+
     const employee = await Employee.findOne({
       where: { employeeCode: String(row['Emp ID.']).trim() }
     });
@@ -93,6 +88,22 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       continue;
     }
 
+    const lockedRun = await PayrollRun.findOne({
+    where: {
+        month: Number(10), //10
+        year: Number(25), //25
+        status: 'FINALIZED'
+    }
+    });
+
+    if (lockedRun) {
+    errors.push(
+        `Row ${i + 2}: Payroll finalized for ${row['MONTH']}/${row['YEAR']}`
+    );
+    continue;
+    }
+
+
     validRows.push({
       EmployeeId: employee.id,
       month: Number(10),
@@ -101,6 +112,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       payableDays: Number(row['Payable Days']),
       overtimeHours: Number(row['OT Hrs'])
     });
+    console.log(validRows[validRows.length - 1]);
   }
 
   if (errors.length) {

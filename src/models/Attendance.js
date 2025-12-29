@@ -6,6 +6,7 @@ const Attendance = sequelize.define('Attendance', {
   month: DataTypes.INTEGER,
   year: DataTypes.INTEGER,
   daysPresent: DataTypes.INTEGER,
+  payableDays: DataTypes.INTEGER,
   overtimeHours: DataTypes.FLOAT
 }, {
   indexes: [

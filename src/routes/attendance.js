@@ -5,6 +5,7 @@ const Attendance = require('../models/Attendance');
 const Employee = require('../models/Employee');
 const sequelize = require('../config/database');
 const PayrollRun = require('../models/PayrollRun');
+const { requireRole } = require('../middleware/auth');
 
 function parseSheetDirectly(sheet, headerRowIndex = 7) {
   const range = XLSX.utils.decode_range(sheet['!ref']);
@@ -41,7 +42,7 @@ function parseSheetDirectly(sheet, headerRowIndex = 7) {
 }
 
 
-router.post('/upload', upload.single('file'), async (req, res) => {
+router.post('/upload', requireRole('ADMIN'), upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'File required' });
   }

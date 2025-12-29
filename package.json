@@ -18,9 +18,11 @@
   },
   "homepage": "https://github.com/Prachiyadav24/PayrollCompliance#readme",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "csv-parse": "^6.1.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "express-session": "^1.18.2",
     "json2csv": "^6.0.0-alpha.2",
     "multer": "^2.0.2",
     "nodemon": "^3.1.11",

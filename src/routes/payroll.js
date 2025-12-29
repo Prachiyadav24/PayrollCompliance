@@ -185,6 +185,7 @@ router.post('/calculate/:runId', async (req, res) => {
 });
 
 const StatutoryDeduction = require('../models/StatutoryDeduction');
+const { requireRole } = require('../middleware/auth');
 
 router.post('/calculate-pf/:runId', async (req, res) => {
   const { runId } = req.params;
@@ -428,7 +429,7 @@ router.post('/calculate-net/:runId', async (req, res) => {
   }
 });
 
-router.post('/calculate-tds/:runId', async (req, res) => {
+router.post('/calculate-tds/:runId', requireRole('ADMIN'), async (req, res) => {
   const { runId } = req.params;
 
   const payrollRun = await PayrollRun.findByPk(runId);

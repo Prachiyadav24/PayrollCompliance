@@ -5,6 +5,7 @@ router.use('/attendance', require('./attendance'));
 router.use('/payroll', require('./payroll'));
 router.use('/payslips', require('./payslips'));
 router.use('/reports', require('./reports'));
+router.use('/auth', require('./auth'));
 
 // router.get('/health', (_, res) => res.send('OK'));
 

@@ -428,5 +428,84 @@ router.post('/calculate-net/:runId', async (req, res) => {
   }
 });
 
+router.post('/calculate-tds/:runId', async (req, res) => {
+  const { runId } = req.params;
+
+  const payrollRun = await PayrollRun.findByPk(runId);
+
+  if (!payrollRun) {
+    return res.status(404).json({ error: 'Payroll run not found' });
+  }
+
+  if (payrollRun.status !== 'DRAFT') {
+    return res.status(400).json({
+      error: 'Cannot calculate TDS for finalized payroll'
+    });
+  }
+
+  const entries = await PayrollEntry.findAll({
+    where: { PayrollRunId: runId },
+    include: [{ model: StatutoryDeduction }]
+  });
+
+  const STANDARD_DEDUCTION = 50000;
+
+  function calculateAnnualTax(taxableIncome) {
+    let tax = 0;
+
+    if (taxableIncome <= 250000) {
+      tax = 0;
+    } else if (taxableIncome <= 500000) {
+      tax = (taxableIncome - 250000) * 0.05;
+    } else if (taxableIncome <= 1000000) {
+      tax =
+        (250000 * 0.05) +
+        (taxableIncome - 500000) * 0.2;
+    } else {
+      tax =
+        (250000 * 0.05) +
+        (500000 * 0.2) +
+        (taxableIncome - 1000000) * 0.3;
+    }
+
+    return tax;
+  }
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    for (const entry of entries) {
+      const monthlyGross = Number(entry.grossPay) || 0;
+
+      const annualGross = monthlyGross * 12;
+      const taxableIncome = Math.max(
+        annualGross - STANDARD_DEDUCTION,
+        0
+      );
+      const annualTax = calculateAnnualTax(taxableIncome);
+      const monthlyTds = annualTax / 12;
+
+      await StatutoryDeduction.upsert({
+        PayrollEntryId: entry.id,
+        tds: monthlyTds
+      }, { transaction });
+    }
+
+    await transaction.commit();
+
+    res.json({
+      message: 'TDS calculated successfully',
+      payrollRunId: runId
+    });
+
+  } catch (err) {
+    await transaction.rollback();
+    res.status(500).json({
+      error: 'TDS calculation failed',
+      details: err.message
+    });
+  }
+});
+
 
 module.exports = router;

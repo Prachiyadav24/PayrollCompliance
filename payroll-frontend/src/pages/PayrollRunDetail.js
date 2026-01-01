@@ -70,6 +70,7 @@ export default function PayrollRunDetail() {
             <th>PT</th>
             <th>TDS</th>
             <th>Net</th>
+            <th>Payslip</th>
           </tr>
         </thead>
         <tbody>
@@ -83,6 +84,26 @@ export default function PayrollRunDetail() {
               <td>{e.StatutoryDeduction?.professionalTax || 0}</td>
               <td>{e.StatutoryDeduction?.tds || 0}</td>
               <td>{e.netPay}</td>
+              <td>
+                {run.status === 'FINALIZED' && (
+                    <>
+                    <a
+                        href={`http://localhost:3000/api/payslips/${run.id}/${e.Employee.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        >
+                        View
+                        </a>
+                        &nbsp;|&nbsp;
+                       <a
+                        href={`http://localhost:3000/api/payslips/${run.id}/${e.Employee.id}?download=true`}
+                        >
+                        Download
+                        </a>
+
+                    </>
+                )}
+</td>
             </tr>
           ))}
         </tbody>

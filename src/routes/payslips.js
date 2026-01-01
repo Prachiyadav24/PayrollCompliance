@@ -9,7 +9,7 @@ const StatutoryDeduction = require('../models/StatutoryDeduction');
 router.get('/:runId/:employeeId', async (req, res) => {
   const { runId, employeeId } = req.params;
 
-  if (req.session.role !== 'ADMIN' && req.session.employeeId != employeeId) {
+  if (req.session.role === 'EMPLOYEE' && req.session.employeeId != Number(employeeId)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
@@ -32,13 +32,14 @@ router.get('/:runId/:employeeId', async (req, res) => {
   const emp = entry.Employee;
   const ded = entry.StatutoryDeduction || {};
   const run = entry.PayrollRun;
+  
+  const isDownload = req.query.download === 'true';
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader(
     'Content-Disposition',
-    `inline; filename=payslip_${emp.employeeCode}_${run.month}_${run.year}.pdf`
+    `${isDownload ? 'attachment' : 'inline'}; filename=payslip_${emp.employeeCode}_${run.month}_${run.year}.pdf`
   );
-
   const doc = new PDFDocument({ margin: 50 });
   doc.pipe(res);
 

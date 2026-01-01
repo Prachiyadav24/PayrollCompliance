@@ -8,8 +8,12 @@ export default function HomeRedirect() {
     return <Navigate to="/my-payslips" replace />;
   }
 
-  if (user.role === 'ADMIN' || user.role === 'ACCOUNTANT') {
+  if (user.role === 'ADMIN') {
     return <Navigate to="/payroll/runs" replace />;
+  }
+
+  if (user.role === 'ACCOUNTANT') {
+    return <Navigate to="/reports" replace />;
   }
 
   return <Navigate to="/unauthorized" replace />;

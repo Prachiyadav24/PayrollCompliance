@@ -14,11 +14,17 @@ const Employee = require('../models/Employee');
 //     role: 'ADMIN'
 //   });
 
-await User.create({
-    email: 'akash@example.com',
+// await User.create({
+//     email: 'akash@example.com',
+//     passwordHash,
+//     role: 'EMPLOYEE',
+//     EmployeeId: 2
+//   });
+
+  await User.create({
+    email: 'accountant@example.com',
     passwordHash,
-    role: 'EMPLOYEE',
-    EmployeeId: 2
+    role: 'ACCOUNTANT',
   });
 
   console.log('Admin user created');

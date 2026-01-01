@@ -9,6 +9,7 @@ import EmployeeUpload from './pages/EmployeeUpload';
 import AttendanceUpload from './pages/AttendanceUpload';
 import MyPayslips from './pages/MyPayslips';
 import HomeRedirect from './pages/HomeRedirect';
+import Reports from './pages/Reports';
 
 function Dashboard() {
   return <h1>Dashboard</h1>;
@@ -75,6 +76,16 @@ export default function App() {
             element={
               <ProtectedRoute roles={['EMPLOYEE']}>
                 <MyPayslips />
+              </ProtectedRoute>
+            }
+          />
+
+
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute roles={['ADMIN', 'ACCOUNTANT']}>
+                <Reports />
               </ProtectedRoute>
             }
           />

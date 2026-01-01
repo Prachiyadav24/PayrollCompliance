@@ -10,7 +10,10 @@ export default function MyPayslips() {
     api.get('/payroll/my-runs').then(res => setRuns(res.data));
   }, []);
 
-  console.log(user)
+  const MONTH_NAMES = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
 
   return (
     <div className="page">
@@ -29,8 +32,8 @@ export default function MyPayslips() {
         <tbody>
           {runs.map(r => (
             <tr key={r.runId}>
-              <td>{r.month}</td>
-              <td>{r.year}</td>
+              <td>{MONTH_NAMES[r.month - 1]}</td>
+              <td>{r.year < 100 ? 2000 + r.year : r.year}</td>
               <td>{r.status}</td>
               <td>
                 {r.status === 'FINALIZED' ? (

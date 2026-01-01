@@ -31,6 +31,10 @@ export default function PayrollRuns() {
     setYear('');
     fetchRuns();
   }
+  const MONTH_NAMES = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
 
   return (
     <div className="page" style={{ padding: 20 }}>
@@ -65,8 +69,10 @@ export default function PayrollRuns() {
         <tbody>
           {runs.map(run => (
             <tr key={run.id}>
-              <td>{run.month}</td>
-              <td>{run.year}</td>
+              <td>{MONTH_NAMES[run.month - 1]}</td>
+
+              <td>{run.year < 100 ? 2000 + run.year : run.year}</td>
+
               <td>{run.status}</td>
               <td>
                 <button onClick={() => navigate(`/payroll/run/${run.id}`)}>

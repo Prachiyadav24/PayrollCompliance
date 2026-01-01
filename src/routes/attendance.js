@@ -48,13 +48,58 @@ router.post('/upload', requireRole('ADMIN'), upload.single('file'), async (req, 
   }
 
   let rows;
+  let monthCell;
   try {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    monthCell = sheet['J6'];
+
     rows = parseSheetDirectly(sheet);
   } catch {
     return res.status(400).json({ error: 'Invalid file format' });
   }
+
+
+  if (!monthCell || !monthCell.v) {
+    throw new Error('Month information not found in expected cell');
+  }
+
+  const monthText = String(monthCell.v).trim();
+
+  const match = monthText.match(/([A-Za-z]+)\s+(\d{4})/);
+
+  if (!match) {
+    throw new Error(`Unable to parse month/year from: ${monthText}`);
+  }
+
+  const [, monthName, yearStr] = match;
+
+  const MONTH_MAP = {
+    jan: 1,
+    feb: 2,
+    mar: 3,
+    apr: 4,
+    may: 5,
+    jun: 6,
+    jul: 7,
+    aug: 8,
+    sep: 9,
+    oct: 10,
+    nov: 11,
+    dec: 12
+  };
+
+  const month = MONTH_MAP[monthName.toLowerCase()];
+
+  if (!month) {
+    throw new Error(`Invalid month name: ${monthName}`);
+  }
+
+  const fullYear = Number(yearStr); // 2025
+  const year = fullYear % 100;      // 25
+
+  console.log('Parsed month and year from sheet:', month, year);
+
 
   const requiredFields = [
     'Emp ID.',
@@ -91,8 +136,8 @@ router.post('/upload', requireRole('ADMIN'), upload.single('file'), async (req, 
 
     const lockedRun = await PayrollRun.findOne({
     where: {
-        month: Number(10), //10
-        year: Number(25), //25
+        month: Number(month), //10
+        year: Number(year), //25
         status: 'FINALIZED'
     }
     });
@@ -107,8 +152,8 @@ router.post('/upload', requireRole('ADMIN'), upload.single('file'), async (req, 
 
     validRows.push({
       EmployeeId: employee.id,
-      month: Number(10),
-      year: Number(25),
+      month: Number(month),
+      year: Number(year),
       daysPresent: Number(row['Present Days']),
       payableDays: Number(row['Payable Days']),
       overtimeHours: Number(row['OT Hrs'])

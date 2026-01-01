@@ -9,6 +9,10 @@ const StatutoryDeduction = require('../models/StatutoryDeduction');
 router.get('/:runId/:employeeId', async (req, res) => {
   const { runId, employeeId } = req.params;
 
+  if (req.session.role !== 'ADMIN' && req.session.employeeId != employeeId) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
   const entry = await PayrollEntry.findOne({
     where: {
       PayrollRunId: runId,

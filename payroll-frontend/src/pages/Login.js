@@ -16,7 +16,7 @@ export default function Login() {
 
     try {
       const res = await api.post('/auth/login', { email, password });
-      setUser({ role: res.data.role });
+      setUser({ role: res.data.role , employeeId: res.data.employeeId });
       navigate('/');
     } catch {
       setError('Invalid credentials');
@@ -24,7 +24,14 @@ export default function Login() {
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: '100px auto' }}>
+    <div className="page"   style={{
+    maxWidth: 400,
+    margin: '120px auto',
+    background: 'white',
+    padding: 24,
+    borderRadius: 8,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+  }}>
       <h2>Payroll Login</h2>
 
       <form onSubmit={handleSubmit}>

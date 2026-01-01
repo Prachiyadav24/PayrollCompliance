@@ -508,5 +508,46 @@ router.post('/calculate-tds/:runId', requireRole('ADMIN'), async (req, res) => {
   }
 });
 
+router.get('/run/:id', async (req, res) => {
+  const run = await PayrollRun.findByPk(req.params.id, {
+    include: [
+      {
+        model: PayrollEntry,
+        include: [Employee, StatutoryDeduction]
+      }
+    ]
+  });
+
+  if (!run) {
+    return res.status(404).json({ error: 'Payroll run not found' });
+  }
+
+  res.json(run);
+});
+
+const { requireAuth } = require('../middleware/auth');
+
+router.get('/my-runs', requireAuth, async (req, res) => {
+  if (req.session.role !== 'EMPLOYEE') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const entries = await PayrollEntry.findAll({
+    where: { EmployeeId: req.session.employeeId },
+    include: [PayrollRun],
+    order: [[PayrollRun, 'year', 'DESC'], [PayrollRun, 'month', 'DESC']]
+  });
+
+  const runs = entries.map(e => ({
+    runId: e.PayrollRun.id,
+    month: e.PayrollRun.month,
+    year: e.PayrollRun.year,
+    status: e.PayrollRun.status
+  }));
+
+  res.json(runs);
+});
+
+
 
 module.exports = router;

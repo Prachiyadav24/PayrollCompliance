@@ -6,7 +6,11 @@ const User = require('../models/User');
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ where: { email } });
+  const user = await User.findOne({
+    where: { email },
+    include: ['Employee']
+  });
+
   if (!user) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
@@ -19,9 +23,13 @@ router.post('/login', async (req, res) => {
   req.session.userId = user.id;
   req.session.role = user.role;
 
+  // THIS is the missing piece
+  req.session.employeeId = user.Employee ? user.Employee.id : null;
+
   res.json({
     message: 'Logged in',
-    role: user.role
+    role: user.role,
+    employeeId: req.session.employeeId
   });
 });
 
@@ -41,7 +49,8 @@ router.get('/me', (req, res) => {
 
   res.json({
     userId: req.session.userId,
-    role: req.session.role
+    role: req.session.role,
+    employeeId: req.session.employeeId
   });
 });
 

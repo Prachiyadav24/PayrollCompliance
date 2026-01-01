@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import TopBar from './TopBar';
 
 export default function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth();
@@ -14,5 +15,10 @@ export default function ProtectedRoute({ children, roles }) {
     return <Navigate to="/unauthorized" replace />;
   }
 
-  return children;
+  return (
+    <>
+      <TopBar />
+      {children}
+    </>
+  );
 }
